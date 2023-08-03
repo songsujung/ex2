@@ -20,18 +20,39 @@ import java.util.Map;
 @Log4j2
 public class JWTCheckFilter extends OncePerRequestFilter {
 
+    // 어떤 요청이 들어왔는데 true면 필터링을 하지 않음
+    // api/member는 필터X
+    // api/todo는 필터 O
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
 
-        // Preflight 체크X
-        if (request.getMethod().equals("OPTIONS")) {
+        //Preflight
+        // 프리플라이트는 필터 X . 프리플라이트는 OPTIONS로 날라가기 떄문에 OPTIONS와 같으면 true
+        if(request.getMethod().equals("OPTIONS")){
             return true;
         }
 
         // /api/todo/list /api/member/login
         String path = request.getRequestURI();
 
-        if (path.startsWith("/api/member/")) {
+        // 이거는 필터링 하지마! true를 줘서 필터링 하지않게끔 설정
+        // if(path.equals("/api/member/login") || path.equals("/api/member/refresh")){
+        // 같은 코드! -> /api/member로 시작하는 경로는 필터하지마~!라는 내용
+        if (path.startsWith("/api/member/")){
+            return true;
+        }
+
+        // login으로 시작하면 필터X
+        if(path.startsWith("/login")){
+            return true;
+        }
+
+        // oauth2로 시작하면 필터X
+        if(path.startsWith("/oauth2")){
+            return true;
+        }
+
+        if(path.endsWith(".ico")){
             return true;
         }
 
@@ -41,9 +62,10 @@ public class JWTCheckFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
-        log.info("-------------doFilterInternal---------------");
+        log.info("------------doFilterInternal----------------");
 
-        log.info("-------------doFilterInternal---------------");
+        log.info("------------doFilterInternal----------------");
+
 
         String authHeaderStr = request.getHeader("Authorization");
 
@@ -54,38 +76,41 @@ public class JWTCheckFilter extends OncePerRequestFilter {
 
             log.info("JWT claims: " + claims);
 
-            // JWT 인증확인 후
             String email = (String) claims.get("email");
             String pw = (String) claims.get("pw");
             String nickname = (String) claims.get("nickname");
             Boolean social = (Boolean) claims.get("social");
             List<String> roleNames = (List<String>) claims.get("roleNames");
 
+            // JWT를 가지고 memberDTO 객체 생성 ( 사용자 정보 , 시큐리티 정보 )
             MemberDTO memberDTO = new MemberDTO(email, pw, nickname, social.booleanValue(), roleNames);
 
             log.info("-----------------------------------");
             log.info(memberDTO);
             log.info(memberDTO.getAuthorities());
 
-            // memberDTO를 Security에 포함시켜주는 코드
+            // MerberDTO를 시큐리티 안에다 포함시키는 코드
+            // JWT를 가지고 예전에 사용했던 시큐리티 처럼 사용가능하게끔 설정해주는 것이다.
             UsernamePasswordAuthenticationToken authenticationToken
                     = new UsernamePasswordAuthenticationToken(memberDTO, pw, memberDTO.getAuthorities());
 
             SecurityContextHolder.getContext().setAuthentication(authenticationToken);
 
-
-
-            // 필터 통과 후 다음 필터나 컨드롤러 등을 호출
+            // 문제가 없다면 통과
             filterChain.doFilter(request, response);
 
-        } catch (Exception e) {
+        }catch(Exception e) {
 
             log.error("JWT Check Error..............");
             log.error(e.getMessage());
 
+            Gson gson = new Gson();
+            String msg = gson.toJson(Map.of("error", "ERROR_ACCESS_TOKEN"));
 
-
-
+            response.setContentType("application/json");
+            PrintWriter printWriter = response.getWriter();
+            printWriter.println(msg);
+            printWriter.close();
         }
     }
 }

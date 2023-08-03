@@ -57,6 +57,10 @@ public class MemberDTO extends User implements OAuth2User {
 
     }
 
+    public void setProps(Map<String, Object> map) {
+
+    }
+
     @Override
     public Map<String, Object> getAttributes() {
         return null;

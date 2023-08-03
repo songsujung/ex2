@@ -17,6 +17,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.zerock.ex2.security.filter.JWTCheckFilter;
 import org.zerock.ex2.security.handler.ApiLoginSuccessHandler;
 import org.zerock.ex2.security.handler.CustomAccessDeniedHandler;
+import org.zerock.ex2.security.handler.OAuthAPILoginSuccessHandler;
 
 import java.util.Arrays;
 
@@ -49,6 +50,16 @@ public class CustomSecurityConfig {
         // AccessDenied 오류 해결(예외처리)
         http.exceptionHandling(config -> {
             config.accessDeniedHandler(new CustomAccessDeniedHandler());
+        });
+
+        // oauth2Client (소셜로그인처리)
+        http.oauth2Client(config -> {
+
+        });
+
+        // oauth2Login (소셜로그인처리)
+        http.oauth2Login(config -> {
+            config.successHandler(new OAuthAPILoginSuccessHandler());
         });
 
         // 세션 , 쿠키 사용X
